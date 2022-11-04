@@ -9,6 +9,7 @@ class Property:
         sellprice = Bytes("SELLPRICE")
         sale = Bytes("SALE")
         likes = Bytes("LIKES")
+        liked = Bytes("LIKED")
         owner = Bytes("OWNER")
         
 
@@ -46,19 +47,29 @@ class Property:
             Approve(),
         ])
 
+
+    def optIn(self):
+        return Seq([
+            App.localPut(Txn.sender(), self.Variables.liked, Int(0)),
+            Approve()
+        ])
+
 # other users can buy property
     def buy(self):
-            count = Txn.application_args[1]
             valid_number_of_transactions = Global.group_size() == Int(2)
 
+            # checks that the payment arguments are valid
             valid_payment_to_seller = And(
                 Gtxn[1].type_enum() == TxnType.Payment,
                 Gtxn[1].receiver() == App.globalGet(self.Variables.owner),
                 Gtxn[1].amount() == App.globalGet(self.Variables.sellprice),
                 Gtxn[1].sender() == Gtxn[0].sender(),
             )
-
-            can_buy = And(valid_number_of_transactions,
+            # checks that all conditions to buy property are met
+            # checks that the property is on sale
+            can_buy = And(
+                        App.globalGet(self.Variables.sale) == Int(1),
+                        valid_number_of_transactions,
                         valid_payment_to_seller)
 
             update_state = Seq([
@@ -73,13 +84,16 @@ class Property:
     def like(self):
         Assert(
             And(
-                    Global.group_size() == Int(1),
+                    # checks if sender is opted in
+                    # checks if sender is not the current property's owner
+                    # checks if sender hasn't yet like this property
+                    App.optedIn(Txn.sender(), Global.current_application_id()),
                     Txn.sender() != App.globalGet(self.Variables.owner),
-                    Txn.applications.length() == Int(1),
-                    Txn.application_args.length() == Int(1),
+                    App.localGet(Txn.sender(), self.Variables.liked) == Int(0),
             ),
         ),
         return Seq([
+            App.localPut(Txn.sender(), self.Variables.liked, Int(1)),
             App.globalPut(self.Variables.likes, App.globalGet(self.Variables.likes) + Int(1)),
             Approve()
         ])
@@ -88,6 +102,8 @@ class Property:
    #owner of property can sell property
     def sell(self):
         Assert(
+            # checks if sender is the property's owner
+            # checks if property isn't on sale
             And(
                 Txn.application_args.length() == Int(1),
                 Txn.sender() == App.globalGet(self.Variables.owner),
@@ -109,6 +125,7 @@ class Property:
         return Cond(
             [Txn.application_id() == Int(0), self.application_creation()],
             [Txn.on_completion() == OnComplete.DeleteApplication, self.application_deletion()],
+            [Txn.on_completion() == OnComplete.OptIn, self.optIn()],
             [Txn.application_args[0] == self.AppMethods.like, self.like()],
             [Txn.application_args[0] == self.AppMethods.buy, self.buy()],
             [Txn.application_args[0] == self.AppMethods.sell, self.sell()],
