@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import {Badge, Button, Card, Col, FloatingLabel, Form, Stack} from "react-bootstrap";
 import {microAlgosToString, truncateAddress} from "../../utils/conversions";
 import Identicon from "../utils/Identicon";
-import {stringToMicroAlgos} from "../../utils/conversions";
+
 
 const Property = ({address, property, buyProperty, deleteProperty, likeProperty, sellProperty}) => {
     const {name, image, description, location, sellprice, sale, likes, appId, owner} = property;
@@ -28,7 +28,7 @@ const Property = ({address, property, buyProperty, deleteProperty, likeProperty,
                     <Card.Text className="flex-grow-1">{likes} Likes</Card.Text>
                     <Form className="d-flex align-content-stretch flex-row gap-2">
                         
-                        {property.owner !== address && sale === 1 &&
+                        {property.owner !== address && sale === 1 ? (
                         <Button
                             variant="outline-dark"
                             onClick={() => buyProperty(property)}
@@ -36,6 +36,9 @@ const Property = ({address, property, buyProperty, deleteProperty, likeProperty,
                         >
                             Buy for {microAlgosToString(sellprice)} ALGO
                         </Button>
+                        ):(
+                            <Card.Text className="flex-grow-1">{property.owner !== address ? "SOLD" : ""}</Card.Text>
+                        )
                         }
                         {property.owner === address &&
                             <Button

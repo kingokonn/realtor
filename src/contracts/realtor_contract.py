@@ -9,7 +9,6 @@ class Property:
         sellprice = Bytes("SELLPRICE")
         sale = Bytes("SALE")
         likes = Bytes("LIKES")
-        liked = Bytes("LIKED")
         owner = Bytes("OWNER")
         
 
@@ -26,7 +25,7 @@ class Property:
             Assert(
                 And(
                     Txn.application_args.length() == Int(4),
-                    Txn.note() == Bytes("realtor:uv1"),
+                    Txn.note() == Bytes("realtor:uv0.12"),
                     Len(Txn.application_args[0]) > Int(0),
                     Len(Txn.application_args[1]) > Int(0),
                     Len(Txn.application_args[2]) > Int(0),
@@ -45,13 +44,6 @@ class Property:
             App.globalPut(self.Variables.owner, Txn.sender()),
 
             Approve(),
-        ])
-
-
-    def optIn(self):
-        return Seq([
-            App.localPut(Txn.sender(), self.Variables.liked, Int(0)),
-            Approve()
         ])
 
 # other users can buy property
@@ -73,7 +65,6 @@ class Property:
                         valid_payment_to_seller)
 
             update_state = Seq([
-                App.globalPut(self.Variables.owner, Txn.sender()),
                 App.globalPut(self.Variables.sale, Int(0)),
                 Approve()
             ])
@@ -84,16 +75,11 @@ class Property:
     def like(self):
         Assert(
             And(
-                    # checks if sender is opted in
                     # checks if sender is not the current property's owner
-                    # checks if sender hasn't yet like this property
-                    App.optedIn(Txn.sender(), Global.current_application_id()),
                     Txn.sender() != App.globalGet(self.Variables.owner),
-                    App.localGet(Txn.sender(), self.Variables.liked) == Int(0),
             ),
         ),
         return Seq([
-            App.localPut(Txn.sender(), self.Variables.liked, Int(1)),
             App.globalPut(self.Variables.likes, App.globalGet(self.Variables.likes) + Int(1)),
             Approve()
         ])
@@ -125,7 +111,6 @@ class Property:
         return Cond(
             [Txn.application_id() == Int(0), self.application_creation()],
             [Txn.on_completion() == OnComplete.DeleteApplication, self.application_deletion()],
-            [Txn.on_completion() == OnComplete.OptIn, self.optIn()],
             [Txn.application_args[0] == self.AppMethods.like, self.like()],
             [Txn.application_args[0] == self.AppMethods.buy, self.buy()],
             [Txn.application_args[0] == self.AppMethods.sell, self.sell()],

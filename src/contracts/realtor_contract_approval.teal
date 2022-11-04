@@ -27,9 +27,14 @@ app_global_put
 int 1
 return
 main_l7:
+byte "SALE"
+app_global_get
+int 1
+==
 global GroupSize
 int 2
 ==
+&&
 gtxn 1 TypeEnum
 int pay
 ==
@@ -52,9 +57,6 @@ bnz main_l9
 int 0
 return
 main_l9:
-byte "OWNER"
-txn Sender
-app_global_put
 byte "SALE"
 int 0
 app_global_put
@@ -79,7 +81,7 @@ txn NumAppArgs
 int 4
 ==
 txn Note
-byte "realtor:uv1"
+byte "realtor:uv0.12"
 ==
 &&
 txna ApplicationArgs 0
